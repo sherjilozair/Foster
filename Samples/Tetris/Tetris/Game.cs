@@ -526,7 +526,6 @@ namespace Tetris
             }
             RenderTetromino(Batcher, playingTetromino);
 
-            Console.WriteLine("render ghost {0}", GhostYOffset);
             // Render ghost
             if (GhostYOffset > 0)
             {
