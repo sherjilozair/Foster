@@ -1,0 +1,35 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tetris", "Tetris\Tetris.csproj", "{3B438B45-0C2D-4FC2-A885-85DE417EC2F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foster.SDL2", "..\..\Platforms\SDL2\Foster.SDL2.csproj", "{05D3FFC5-855F-44E2-86AD-763CA4845D6A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foster.Framework", "..\..\Framework\Foster.Framework.csproj", "{B10CF975-161A-4E30-84F3-DE6A2419DEB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foster.OpenGL", "..\..\Platforms\OpenGL\Foster.OpenGL.csproj", "{C8D1C978-8F25-414B-86D9-CFA9273215A7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3B438B45-0C2D-4FC2-A885-85DE417EC2F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B438B45-0C2D-4FC2-A885-85DE417EC2F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B438B45-0C2D-4FC2-A885-85DE417EC2F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B438B45-0C2D-4FC2-A885-85DE417EC2F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05D3FFC5-855F-44E2-86AD-763CA4845D6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05D3FFC5-855F-44E2-86AD-763CA4845D6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05D3FFC5-855F-44E2-86AD-763CA4845D6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05D3FFC5-855F-44E2-86AD-763CA4845D6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B10CF975-161A-4E30-84F3-DE6A2419DEB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B10CF975-161A-4E30-84F3-DE6A2419DEB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B10CF975-161A-4E30-84F3-DE6A2419DEB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B10CF975-161A-4E30-84F3-DE6A2419DEB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8D1C978-8F25-414B-86D9-CFA9273215A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8D1C978-8F25-414B-86D9-CFA9273215A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8D1C978-8F25-414B-86D9-CFA9273215A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8D1C978-8F25-414B-86D9-CFA9273215A7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
