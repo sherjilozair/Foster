@@ -213,7 +213,7 @@ namespace Tetris
 
                 playingTetromino = null;
 
-                // check for lines
+                // check for cleared lines
 
                 int read_y = 20 - 1, write_y = 20 - 1;
                 while (read_y >= 0)
@@ -238,7 +238,6 @@ namespace Tetris
                     }
                     read_y--;
                 }
-
             }
 
             if (EndGame)
@@ -278,7 +277,6 @@ namespace Tetris
 
             if (playingTetromino == null)
             {
-
                 Tetro type;
 
                 if (ForceNext == null)
@@ -300,10 +298,7 @@ namespace Tetris
                 }
 
                 playingTetromino = new Tetromino(type, (4, -1));
-
                 nextTetromino = new Tetromino(Bag[0], (1, 1));
-                
-
             }
 
             StepTimer += Time.Delta * (App.Input.Keyboard.Down(Keys.Down) ? SoftDropRate : NormalRate);
@@ -377,7 +372,6 @@ namespace Tetris
                     }
                 }
             }
-
         }
 
         private void RefillBag()
@@ -495,18 +489,21 @@ namespace Tetris
             return clone;
         }
 
-
-     
         private void RenderTetromino(Batch2D Batcher, Tetromino t, Vector2? offset = null, Color? color = null)
         {
             for (int x = 0; x < t.sprites.GetLength(0); x++)
             {
                 for (int y = 0; y < t.sprites.GetLength(1); y++)
                 {
-                    if (t.sprites[x, y] != null)
+                    var sprite = t.sprites[x, y];
+                    if (sprite != null)
                     {
-
-                        t.sprites[x, y].Render(Batcher);
+                        //const float flashProb = 0.001f;
+                        //if (rng.NextFloat() < flashProb)
+                        //{
+                        //    sprite.Play("flash", () => { sprite.Play("idle"); });
+                        //}
+                        sprite.Render(Batcher, offset, color);
                     }
                 }
             }
@@ -529,14 +526,15 @@ namespace Tetris
             }
             RenderTetromino(Batcher, playingTetromino);
 
+            Console.WriteLine("render ghost {0}", GhostYOffset);
             // Render ghost
             if (GhostYOffset > 0)
             {
+                
                 Vector2 offset = new Vector2(0, GhostYOffset * 8);
-                Color ghostColor = Color.Lerp(Color.White, Color.Transparent, 0.9f);
+                Color ghostColor = Color.Lerp(Color.White, Color.Transparent, 0.5f);
                 RenderTetromino(Batcher, playingTetromino, offset, ghostColor);
             }
-
 
             Batcher.SetScissor(null);
 
@@ -548,7 +546,6 @@ namespace Tetris
 
             Batcher.Text(font, "Next", new Vector2(79, 9), new Color(19, 41, 30, 255));
             Batcher.Text(font, "Held", new Vector2(225, 9), new Color(19, 41, 30, 255));
-
         }
 
         static Sprite CreateTetroSprite(Color color)
@@ -559,19 +556,13 @@ namespace Tetris
             return sprite;
         }
 
-        #region Boilerplate
-        // This is called when the Application is shutting down
-        // (or when the Module is removed)
         protected override void Shutdown()
         {
-            // Remove our Callback
             App.Window.OnRender -= Render;
-            
         }
 
         private void Render(Window window)
         {
-            // clear the Window
             App.Graphics.Clear(window, Color.Black);
             App.Graphics.Clear(FrameBuffer, Color.Black);
             Batcher.Clear();
@@ -584,6 +575,5 @@ namespace Tetris
             Batcher.Image(FrameBuffer, Vector2.Zero, Vector2.One * scale, Vector2.Zero, 0, Color.White);
             Batcher.Render(window);
         }
-        #endregion
     }
 }

@@ -25,11 +25,13 @@ namespace Tetris
             this.spriteName = spriteName;
         }
 
-        public void Play(string tagName)
+        Action Action;
+        public void Play(string tagName, Action action = null)
         {
             if (this.tagName != tagName)
             {
                 this.tagName = tagName;
+                this.Action = action;
                 Refresh();
             }
 
@@ -75,6 +77,7 @@ namespace Tetris
                 }
                 else
                 {
+                    Action?.Invoke();
                     state.frameNumber = Tag.From;
                     if (Tag.LoopDirection == Aseprite.Tag.LoopDirections.PingPong)
                     {
@@ -90,6 +93,7 @@ namespace Tetris
                 }
                 else
                 {
+                    Action?.Invoke();
                     state.frameNumber = Tag.To;
                     if (Tag.LoopDirection == Aseprite.Tag.LoopDirections.PingPong)
                     {
