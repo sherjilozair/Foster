@@ -7,8 +7,8 @@ namespace Tetris
 {
     public class Sprite
     {
-        public Vector2 Position { get; set; }
-        public Color Color { get; set; } = Color.White;
+        public Vector2 Position;
+        public Color Color = Color.White;
 
         private Aseprite.Tag Tag;
 
@@ -100,10 +100,10 @@ namespace Tetris
 
         }
 
-        public void Render(Batch2D batch)
+        public void Render(Batch2D batch, Vector2? offset = null, Color? color = null)
         {
             Subtexture subtexture = TextureBank.Get(spriteName, state.frameNumber);
-            batch.Image(subtexture, Position, Color);
+            batch.Image(subtexture, Position + (offset ?? Vector2.Zero), color ?? Color);
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Numerics;
 using Foster.Framework;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Tetris
 {
@@ -19,15 +20,19 @@ namespace Tetris
         string backgroundAsepritePath = "../../../Assets/background.aseprite";
         string tetroAsepritePath = "../../../Assets/tetro.aseprite";
 
-        Aseprite backgroundAseprite;
-        Aseprite tetroAseprite;
+        static Aseprite backgroundAseprite;
+        static Aseprite tetroAseprite;
 
         Sprite[,] settledSprites = new Sprite[10, 20];
         Vector2 Offset = new Vector2(120, 10);
+        Vector2 NextTetrominoOffset = new Vector2(71, 17);
+        Vector2 HeldTetrominoOffset = new Vector2(217, 17);
 
         Sprite backgroundSprite;
 
         Random rng = new Random();
+
+        SpriteFont font;
 
         protected override void Startup()
         {
@@ -45,24 +50,106 @@ namespace Tetris
             TextureBank.PackAndFinalize();
 
             backgroundSprite = new Sprite("background", backgroundAseprite);
+            
+
+            RefillBag();
+
+            font = new SpriteFont("../../../Assets/ChevyRay - Little League.ttf", 7, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890", TextureFilter.Nearest);
 
         }
 
         class Tetromino
         {
-            
+            public Tetro type;
             public (int x, int y) position;
             public Sprite[,] sprites;
 
+            internal Tetromino(Tetro type, (int x, int y) position)
+            {
+                this.type = type;
+                this.position = position;
+                switch (type)
+                {
+                    case Tetro.I:
+                        {
+                            sprites = new Sprite[4, 4];
+                            Color color = new Color(0, 255, 255, 255); // CYAN
+                            sprites[0, 1] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            sprites[2, 1] = CreateTetroSprite(color);
+                            sprites[3, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                    case Tetro.J:
+                        {
+                            sprites = new Sprite[3, 3];
+                            Color color = new Color(0, 255, 0, 255); // BLUE
+                            sprites[0, 0] = CreateTetroSprite(color);
+                            sprites[0, 1] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            sprites[2, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                    case Tetro.L:
+                        {
+                            sprites = new Sprite[3, 3];
+                            Color color = new Color(255, 165, 0, 255); // ORANGE
+                            sprites[2, 0] = CreateTetroSprite(color);
+                            sprites[0, 1] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            sprites[2, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                    case Tetro.O:
+                        {
+                            sprites = new Sprite[3, 3];
+                            Color color = new Color(255, 255, 0, 255); // YELLOW
+                            sprites[1, 0] = CreateTetroSprite(color);
+                            sprites[2, 0] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            sprites[2, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                    case Tetro.S:
+                        {
+                            sprites = new Sprite[3, 3];
+                            Color color = new Color(0, 255, 0, 255); // GREEN
+                            sprites[1, 0] = CreateTetroSprite(color);
+                            sprites[2, 0] = CreateTetroSprite(color);
+                            sprites[0, 1] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                    case Tetro.T:
+                        {
+                            sprites = new Sprite[3, 3];
+                            Color color = new Color(128, 0, 128, 255); // PURPLE
+                            sprites[1, 0] = CreateTetroSprite(color);
+                            sprites[0, 1] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            sprites[2, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                    case Tetro.Z:
+                        {
+                            sprites = new Sprite[3, 3];
+                            Color color = new Color(255, 0, 0, 255); // RED
+                            sprites[0, 0] = CreateTetroSprite(color);
+                            sprites[1, 0] = CreateTetroSprite(color);
+                            sprites[1, 1] = CreateTetroSprite(color);
+                            sprites[2, 1] = CreateTetroSprite(color);
+                            break;
+                        }
+                }
+            }
         }
 
         Tetromino Clone(Tetromino self)
         {
-            Tetromino clone = new Tetromino();
-            clone.position = self.position;
+            Tetromino clone = new Tetromino(self.type, self.position);
             int m = self.sprites.GetLength(0);
             int n = self.sprites.GetLength(1);
-            clone.sprites = new Sprite[m, n];
+            clone.sprites.Initialize();
             for (int x = 0; x < m; x++)
             {
                 for (int y = 0; y < n; y++)
@@ -73,7 +160,9 @@ namespace Tetris
             return clone;
         }
 
-        Tetromino tetromino;
+        Tetromino playingTetromino;
+        Tetromino nextTetromino;
+        Tetromino heldTetromino;
 
         float StepTime = 1.0f;
         float StepTimer = 0f;
@@ -81,6 +170,13 @@ namespace Tetris
         float SoftDropRate = 20.0f;     // 1 step in 3 frames, 20 steps in 1 second
 
         bool Settle = false;
+        bool EndGame = false;
+        bool CanHold = false;
+        bool AfterHold = false;
+        Tetro? HeldPiece = null;
+        Tetro? ForceNext = null;
+
+        int GhostYOffset;
 
         List<Tetro> Bag = new List<Tetro>();
 
@@ -90,180 +186,180 @@ namespace Tetris
             {
                 Settle = false;
 
-                for (int x = 0; x < tetromino.sprites.GetLength(0); x++)
+                for (int x = 0; x < playingTetromino.sprites.GetLength(0); x++)
                 {
-                    for (int y = 0; y < tetromino.sprites.GetLength(1); y++)
+                    for (int y = 0; y < playingTetromino.sprites.GetLength(1); y++)
                     {
-                        if (tetromino.sprites[x, y] != null)
+                        if (playingTetromino.sprites[x, y] != null)
                         {
                             (int x, int y) globalPos = (
-                                tetromino.position.x - 1 + x,
-                                tetromino.position.y - 1 + y);
+                                playingTetromino.position.x - 1 + x,
+                                playingTetromino.position.y - 1 + y);
 
-                            
+
                             if (globalPos.y < 0)
                             {
-                                // end game
+                                EndGame = true;
+                                break;
                             }
                             else
                             {
-                                settledSprites[globalPos.x, globalPos.y] = tetromino.sprites[x, y];
+                                settledSprites[globalPos.x, globalPos.y] = playingTetromino.sprites[x, y];
                             }
-                            
                         }
                     }
+                    if (EndGame) break;
                 }
 
-                tetromino = null;
+                playingTetromino = null;
+
+                // check for lines
+
+                int read_y = 20 - 1, write_y = 20 - 1;
+                while (read_y >= 0)
+                {
+                    bool deleteRow = true;
+                    for (int x = 0; x < 10; x++)
+                    {
+                        if (settledSprites[x, read_y] == null)
+                        {
+                            deleteRow = false;
+                            break;
+                        }
+                    }
+                    if (!deleteRow)
+                    {
+                        for (int x = 0; x < 10; x++)
+                        {
+                            settledSprites[x, write_y] = settledSprites[x, read_y];
+                        }
+                        write_y--;
+
+                    }
+                    read_y--;
+                }
+
             }
 
-            if (tetromino == null)
+            if (EndGame)
             {
-                tetromino = new Tetromino();
+                EndGame = false;
+                // Handle end game
+            }
+
+            if (App.Input.Keyboard.Pressed(Keys.C, Keys.LeftShift, Keys.RightShift))
+            {
+                if (CanHold)
+                {
+                    CanHold = false;
+                    Console.WriteLine("Can Hold");
+                    if (HeldPiece == null)
+                    {
+                        HeldPiece = playingTetromino.type;
+                        playingTetromino = null;
+                        AfterHold = true;
+                        Console.WriteLine("Adding to Held Queue: {0}", HeldPiece);
+
+                    }
+                    else
+                    {
+                        ForceNext = HeldPiece;
+                        HeldPiece = playingTetromino.type;
+                        playingTetromino = null;
+                        Console.WriteLine("Swapping from Held Queue");
+                    }
+                    heldTetromino = new Tetromino(HeldPiece.Value, (1, 1));
+                }
+                else
+                {
+                    Console.WriteLine("Cannot Hold");
+                }
+            }
+
+            if (playingTetromino == null)
+            {
+
                 Tetro type;
 
-                if(Bag.Count == 0)
+                if (ForceNext == null)
                 {
-                    foreach(Tetro t in (Tetro[])Enum.GetValues(typeof(Tetro)))
+                    
+                    type = Bag[0];
+                    Bag.RemoveAt(0);
+                    RefillBag();
+                    if (!AfterHold)
                     {
-                        Bag.Add(t);
+                        CanHold = true;
                     }
-                    rng.Shuffle(Bag);
+                    AfterHold = false;
                 }
-
-                type = Bag[0];
-                Bag.RemoveAt(0);
-
-                switch (type)
+                else
                 {
-                    case Tetro.I:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[4, 4];
-                            Color color = new Color(0, 255, 255, 255); // CYAN
-                            tetromino.sprites[0, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[3, 1] = CreateTetroSprite(color);
-                            break;
-                        }
-                    case Tetro.J:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[3, 3];
-                            Color color = new Color(0, 255, 0, 255); // BLUE
-                            tetromino.sprites[0, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[0, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 1] = CreateTetroSprite(color);
-                            break;
-                        }
-                    case Tetro.L:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[3, 3];
-                            Color color = new Color(255, 165, 0, 255); // ORANGE
-                            tetromino.sprites[2, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[0, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 1] = CreateTetroSprite(color);
-                            break;
-                        }
-                    case Tetro.O:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[3, 3];
-                            Color color = new Color(255, 255, 0, 255); // YELLOW
-                            tetromino.sprites[1, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 1] = CreateTetroSprite(color);
-                            break;
-                        }
-                    case Tetro.S:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[3, 3];
-                            Color color = new Color(0, 255, 0, 255); // GREEN
-                            tetromino.sprites[1, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[0, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            break;
-                        }
-                    case Tetro.T:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[3, 3];
-                            Color color = new Color(128, 0, 128, 255); // PURPLE
-                            tetromino.sprites[1, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[0, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 1] = CreateTetroSprite(color);
-                            break;
-                        }
-                    case Tetro.Z:
-                        {
-                            tetromino.position = (4, -1);
-                            tetromino.sprites = new Sprite[3, 3];
-                            Color color = new Color(255, 0, 0, 255); // RED
-                            tetromino.sprites[0, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 0] = CreateTetroSprite(color);
-                            tetromino.sprites[1, 1] = CreateTetroSprite(color);
-                            tetromino.sprites[2, 1] = CreateTetroSprite(color);
-                            break;
-                        }
+                    type = ForceNext.Value;
+                    ForceNext = null;
                 }
+
+                playingTetromino = new Tetromino(type, (4, -1));
+
+                nextTetromino = new Tetromino(Bag[0], (1, 1));
+                
 
             }
 
-            StepTimer += Time.Delta * (App.Input.Keyboard.Down(Keys.Down)? SoftDropRate : NormalRate);
+            StepTimer += Time.Delta * (App.Input.Keyboard.Down(Keys.Down) ? SoftDropRate : NormalRate);
             if (StepTimer > StepTime)
             {
                 StepTimer -= StepTime;
-                if (!CollideAt(tetromino, (0, 1)))
-                    tetromino.position.y += 1;
+                if (CollideAt(playingTetromino, (0, 1)) == CollisionType.None)
+                    playingTetromino.position.y += 1;
                 else
                 {
-                    Console.WriteLine("settle");
                     Settle = true;
+                    StepTimer = 0f;
                 }
             }
-            if (App.Input.Keyboard.Repeated(Keys.Left, 0.5f, 0.2f))
+            if (App.Input.Keyboard.Pressed(Keys.Space))
             {
-                if (!CollideAt(tetromino, (-1, 0)))
-                    tetromino.position.x--;
+                playingTetromino.position.y += GhostYOffset;
+                Console.WriteLine("hard dropping with {0} to {1}", GhostYOffset, playingTetromino.position.y);
+                Settle = true;
             }
-            else if (App.Input.Keyboard.Repeated(Keys.Right, 0.5f, 0.2f))
+            else if (App.Input.Keyboard.Repeated(Keys.Left, 0.5f, 0.1f))
             {
-                if (!CollideAt(tetromino, (1, 0)))
-                    tetromino.position.x++;
+                if (CollideAt(playingTetromino, (-1, 0)) == CollisionType.None)
+                    playingTetromino.position.x--;
+            }
+            else if (App.Input.Keyboard.Repeated(Keys.Right, 0.5f, 0.1f))
+            {
+                if (CollideAt(playingTetromino, (1, 0)) == CollisionType.None)
+                    playingTetromino.position.x++;
             }
             else if (App.Input.Keyboard.Pressed(Keys.Up))
             {
-                var candidate = RotateTetrominoClock(tetromino);
-                if (candidate != null) tetromino = candidate;
-            }
-            else if (App.Input.Keyboard.Pressed(Keys.Down))
-            {
-                // increase gravity
+                var candidate = RotateTetrominoClock(playingTetromino);
+                if (candidate != null) playingTetromino = candidate;
             }
             else if (App.Input.Keyboard.Pressed(Keys.Z))
             {
-                var candidate = RotateTetrominoCounter(tetromino);
-                if (candidate != null) tetromino = candidate;
-            }
-            else if (App.Input.Keyboard.Pressed(Keys.C, Keys.LeftShift, Keys.RightShift))
-            {
-                // hold piece
-            }
-            else if (App.Input.Keyboard.Pressed(Keys.Space))
-            {
-                // hard drop
+                var candidate = RotateTetrominoCounter(playingTetromino);
+                if (candidate != null) playingTetromino = candidate;
             }
 
+            UpdateTetromino(playingTetromino, Offset, (1, 1));
 
-            UpdateTetromino();
+            GhostYOffset = 0;
+            while (true)
+            {
+                if (CollideAt(playingTetromino, (0, GhostYOffset + 1)) != CollisionType.None)
+                {
+                    break;
+                }
+                GhostYOffset++;
+            }
+
+            UpdateTetromino(nextTetromino, NextTetrominoOffset, (1, 1));
+            if (heldTetromino != null)
+                UpdateTetromino(heldTetromino, HeldTetrominoOffset, (1, 1));
 
             backgroundSprite.Play("idle");
 
@@ -275,6 +371,8 @@ namespace Tetris
                 {
                     if (settledSprites[x, y] != null)
                     {
+                        settledSprites[x, y].Position.X = Offset.X + 8 * x;
+                        settledSprites[x, y].Position.Y = Offset.Y + 8 * y;
                         settledSprites[x, y].Update();
                     }
                 }
@@ -282,7 +380,33 @@ namespace Tetris
 
         }
 
-        private bool CollideAt(Tetromino t, (int x, int y) offset)
+        private void RefillBag()
+        {
+            if (Bag.Count == 0)
+            {
+                Bag.AddRange((Tetro[])Enum.GetValues(typeof(Tetro)));
+                rng.Shuffle(Bag);
+            }
+        }
+
+        private void UpdateTetromino(Tetromino t, Vector2 offset, (int x, int y) center)
+        {
+            for (int x = 0; x < t.sprites.GetLength(0); x++)
+            {
+                for (int y = 0; y < t.sprites.GetLength(1); y++)
+                {
+                    if (t.sprites[x, y] != null)
+                    {
+                        (int x, int y) cell = (t.position.x - center.x + x, t.position.y - center.y + y);
+                        t.sprites[x, y].Position = new Vector2(offset.X + 8 * cell.x, offset.Y + 8 * cell.y);
+                        t.sprites[x, y].Update();
+                    }
+                }
+            }
+        }
+
+        enum CollisionType { None, Left, Right, Bottom };
+        private CollisionType CollideAt(Tetromino t, (int x, int y) offset)
         {
             for (int x = 0; x < t.sprites.GetLength(0); x++)
             {
@@ -294,36 +418,26 @@ namespace Tetris
                             t.position.x - 1 + x + offset.x,
                             t.position.y - 1 + y + offset.y);
 
-                        if (globalPos.x < 0 || globalPos.x >= 10 || globalPos.y >= 20) return true;
+                        if (globalPos.x < 0) return CollisionType.Left;
+                        if (globalPos.x >= 10) return CollisionType.Right;
+                        if (globalPos.y >= 20) return CollisionType.Bottom;
                         if (globalPos.y < 0) continue;
-                        if (settledSprites[globalPos.x, globalPos.y] != null) return true;
+                        if (settledSprites[globalPos.x, globalPos.y] != null)
+                        {
+                            if (x > 1) return CollisionType.Right;
+                            if (x <= 1) return CollisionType.Left;
+                            if (y > 1) return CollisionType.Bottom;
+                        };
                     }
                 }
             }
-            return false;
+            return CollisionType.None;
         }
 
-        void UpdateTetromino()
-        {
-            (int x, int y) center = (1, 1);
-            for (int x = 0; x < tetromino.sprites.GetLength(0); x++)
-            {
-                for (int y = 0; y < tetromino.sprites.GetLength(1); y++)
-                {
-                    if (tetromino.sprites[x, y] != null)
-                    {
-                        (int x, int y) cell = (tetromino.position.x - center.x + x, tetromino.position.y - center.y + y);
-                        tetromino.sprites[x, y].Position = new Vector2(Offset.X + 8 * cell.x, Offset.Y + 8 * cell.y);
-                        tetromino.sprites[x, y].Update();
-                    }
-                }
-            }
-        }
-
+        
         Tetromino RotateTetrominoClock(Tetromino self)
         {
-            Tetromino clone = new Tetromino();
-            clone.position = self.position;
+            Tetromino clone = new Tetromino(self.type, self.position);
             int m = self.sprites.GetLength(0);
             int n = self.sprites.GetLength(1);
             clone.sprites = new Sprite[m, n];
@@ -339,13 +453,30 @@ namespace Tetris
                 }
             }
 
-            return clone;
+            // wall kicking (probably not fully compliant)
+            CollisionType collision = CollideAt(clone, (0, 0));
+            if (collision == CollisionType.Left)
+            {
+                clone.position.x++;
+            }
+            if (collision == CollisionType.Right)
+            {
+                clone.position.x--;
+            }
+            if (collision == CollisionType.Bottom)
+            {
+                clone.position.y--;
+            }
+
+
+            if (CollideAt(clone, (0, 0)) == CollisionType.None)
+                return clone;
+            return null;
         }
 
         Tetromino RotateTetrominoCounter(Tetromino self)
         {
-            Tetromino clone = new Tetromino();
-            clone.position = self.position;
+            Tetromino clone = new Tetromino(self.type, self.position);
             int m = self.sprites.GetLength(0);
             int n = self.sprites.GetLength(1);
             clone.sprites = new Sprite[m, n];
@@ -365,15 +496,17 @@ namespace Tetris
         }
 
 
-        void RenderTetromino(Batch2D Batcher)
+     
+        private void RenderTetromino(Batch2D Batcher, Tetromino t, Vector2? offset = null, Color? color = null)
         {
-            for (int x = 0; x < tetromino.sprites.GetLength(0); x++)
+            for (int x = 0; x < t.sprites.GetLength(0); x++)
             {
-                for (int y = 0; y < tetromino.sprites.GetLength(1); y++)
+                for (int y = 0; y < t.sprites.GetLength(1); y++)
                 {
-                    if (tetromino.sprites[x, y] != null)
+                    if (t.sprites[x, y] != null)
                     {
-                        tetromino.sprites[x, y].Render(Batcher);
+
+                        t.sprites[x, y].Render(Batcher);
                     }
                 }
             }
@@ -383,6 +516,7 @@ namespace Tetris
         {
             backgroundSprite.Render(Batcher);
 
+            Batcher.SetScissor(new RectInt((int)Offset.X, (int)Offset.Y, 8 * 10, 8 * 20));
             for (int x = 0; x < 10; x++)
             {
                 for(int y = 0; y < 20; y++)
@@ -393,12 +527,31 @@ namespace Tetris
                     }
                 }
             }
+            RenderTetromino(Batcher, playingTetromino);
 
-            RenderTetromino(Batcher);
+            // Render ghost
+            if (GhostYOffset > 0)
+            {
+                Vector2 offset = new Vector2(0, GhostYOffset * 8);
+                Color ghostColor = Color.Lerp(Color.White, Color.Transparent, 0.9f);
+                RenderTetromino(Batcher, playingTetromino, offset, ghostColor);
+            }
+
+
+            Batcher.SetScissor(null);
+
+            RenderTetromino(Batcher, nextTetromino);
+            if (heldTetromino != null)
+            {
+                RenderTetromino(Batcher, heldTetromino);
+            }
+
+            Batcher.Text(font, "Next", new Vector2(79, 9), new Color(19, 41, 30, 255));
+            Batcher.Text(font, "Held", new Vector2(225, 9), new Color(19, 41, 30, 255));
 
         }
 
-        Sprite CreateTetroSprite(Color color)
+        static Sprite CreateTetroSprite(Color color)
         {
             var sprite = new Sprite("tetro", tetroAseprite);
             sprite.Play("idle");
@@ -413,6 +566,7 @@ namespace Tetris
         {
             // Remove our Callback
             App.Window.OnRender -= Render;
+            
         }
 
         private void Render(Window window)
