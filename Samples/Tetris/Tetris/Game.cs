@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Numerics;
 using Foster.Framework;
-
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Tetris
 {
@@ -47,7 +48,6 @@ namespace Tetris
 
         }
 
-
         class Tetromino
         {
             
@@ -56,19 +56,84 @@ namespace Tetris
 
         }
 
+        Tetromino Clone(Tetromino self)
+        {
+            Tetromino clone = new Tetromino();
+            clone.position = self.position;
+            int m = self.sprites.GetLength(0);
+            int n = self.sprites.GetLength(1);
+            clone.sprites = new Sprite[m, n];
+            for (int x = 0; x < m; x++)
+            {
+                for (int y = 0; y < n; y++)
+                {
+                    clone.sprites[x, y] = CreateTetroSprite(self.sprites[x, y].Color);
+                }
+            }
+            return clone;
+        }
+
         Tetromino tetromino;
 
-        float StepTime = 0.5f;
+        float StepTime = 1.0f;
         float StepTimer = 0f;
+        float NormalRate = 1f;          // 1 step in 60 frames, 1 step in 1 second
+        float SoftDropRate = 20.0f;     // 1 step in 3 frames, 20 steps in 1 second
+
+        bool Settle = false;
+
+        List<Tetro> Bag = new List<Tetro>();
 
         protected override void Update()
         {
+            if (Settle)
+            {
+                Settle = false;
 
-            if(tetromino == null)
+                for (int x = 0; x < tetromino.sprites.GetLength(0); x++)
+                {
+                    for (int y = 0; y < tetromino.sprites.GetLength(1); y++)
+                    {
+                        if (tetromino.sprites[x, y] != null)
+                        {
+                            (int x, int y) globalPos = (
+                                tetromino.position.x - 1 + x,
+                                tetromino.position.y - 1 + y);
+
+                            
+                            if (globalPos.y < 0)
+                            {
+                                // end game
+                            }
+                            else
+                            {
+                                settledSprites[globalPos.x, globalPos.y] = tetromino.sprites[x, y];
+                            }
+                            
+                        }
+                    }
+                }
+
+                tetromino = null;
+            }
+
+            if (tetromino == null)
             {
                 tetromino = new Tetromino();
-               
-                Tetro type = rng.Choose(Tetro.I, Tetro.J, Tetro.L, Tetro.O, Tetro.S, Tetro.T, Tetro.Z);
+                Tetro type;
+
+                if(Bag.Count == 0)
+                {
+                    foreach(Tetro t in (Tetro[])Enum.GetValues(typeof(Tetro)))
+                    {
+                        Bag.Add(t);
+                    }
+                    rng.Shuffle(Bag);
+                }
+
+                type = Bag[0];
+                Bag.RemoveAt(0);
+
                 switch (type)
                 {
                     case Tetro.I:
@@ -152,22 +217,53 @@ namespace Tetris
 
             }
 
-            StepTimer += Time.Delta;
+            StepTimer += Time.Delta * (App.Input.Keyboard.Down(Keys.Down)? SoftDropRate : NormalRate);
             if (StepTimer > StepTime)
             {
                 StepTimer -= StepTime;
-                tetromino.position.y += 1;
+                if (!CollideAt(tetromino, (0, 1)))
+                    tetromino.position.y += 1;
+                else
+                {
+                    Console.WriteLine("settle");
+                    Settle = true;
+                }
             }
-            if (App.Input.Keyboard.Pressed(Keys.Left))
+            if (App.Input.Keyboard.Repeated(Keys.Left, 0.5f, 0.2f))
             {
-                tetromino.position.x--;
+                if (!CollideAt(tetromino, (-1, 0)))
+                    tetromino.position.x--;
             }
-            if (App.Input.Keyboard.Pressed(Keys.Right))
+            else if (App.Input.Keyboard.Repeated(Keys.Right, 0.5f, 0.2f))
             {
-                tetromino.position.x++;
+                if (!CollideAt(tetromino, (1, 0)))
+                    tetromino.position.x++;
             }
-            UpdateTetromino();
+            else if (App.Input.Keyboard.Pressed(Keys.Up))
+            {
+                var candidate = RotateTetrominoClock(tetromino);
+                if (candidate != null) tetromino = candidate;
+            }
+            else if (App.Input.Keyboard.Pressed(Keys.Down))
+            {
+                // increase gravity
+            }
+            else if (App.Input.Keyboard.Pressed(Keys.Z))
+            {
+                var candidate = RotateTetrominoCounter(tetromino);
+                if (candidate != null) tetromino = candidate;
+            }
+            else if (App.Input.Keyboard.Pressed(Keys.C, Keys.LeftShift, Keys.RightShift))
+            {
+                // hold piece
+            }
+            else if (App.Input.Keyboard.Pressed(Keys.Space))
+            {
+                // hard drop
+            }
 
+
+            UpdateTetromino();
 
             backgroundSprite.Play("idle");
 
@@ -186,6 +282,27 @@ namespace Tetris
 
         }
 
+        private bool CollideAt(Tetromino t, (int x, int y) offset)
+        {
+            for (int x = 0; x < t.sprites.GetLength(0); x++)
+            {
+                for (int y = 0; y < t.sprites.GetLength(1); y++)
+                {
+                    if (t.sprites[x, y] != null)
+                    {
+                        (int x, int y) globalPos = (
+                            t.position.x - 1 + x + offset.x,
+                            t.position.y - 1 + y + offset.y);
+
+                        if (globalPos.x < 0 || globalPos.x >= 10 || globalPos.y >= 20) return true;
+                        if (globalPos.y < 0) continue;
+                        if (settledSprites[globalPos.x, globalPos.y] != null) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         void UpdateTetromino()
         {
             (int x, int y) center = (1, 1);
@@ -201,6 +318,50 @@ namespace Tetris
                     }
                 }
             }
+        }
+
+        Tetromino RotateTetrominoClock(Tetromino self)
+        {
+            Tetromino clone = new Tetromino();
+            clone.position = self.position;
+            int m = self.sprites.GetLength(0);
+            int n = self.sprites.GetLength(1);
+            clone.sprites = new Sprite[m, n];
+
+            for (int x = 0; x < m; x++)
+            {
+                for (int y = 0; y < n; y++)
+                {
+                    if (self.sprites[x, y] != null)
+                    {
+                        clone.sprites[m-1-y, x] = CreateTetroSprite(self.sprites[x, y].Color);
+                    }
+                }
+            }
+
+            return clone;
+        }
+
+        Tetromino RotateTetrominoCounter(Tetromino self)
+        {
+            Tetromino clone = new Tetromino();
+            clone.position = self.position;
+            int m = self.sprites.GetLength(0);
+            int n = self.sprites.GetLength(1);
+            clone.sprites = new Sprite[m, n];
+
+            for (int x = 0; x < m; x++)
+            {
+                for (int y = 0; y < n; y++)
+                {
+                    if (self.sprites[x, y] != null)
+                    {
+                        clone.sprites[y, n-1-x] = CreateTetroSprite(self.sprites[x, y].Color);
+                    }
+                }
+            }
+
+            return clone;
         }
 
 

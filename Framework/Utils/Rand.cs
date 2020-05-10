@@ -123,5 +123,18 @@ namespace Foster.Framework
         {
             return choices[random.Next(choices.Length)];
         }
+
+        public static void Shuffle<T>(this Random random, IList<T> list)
+        {
+            int n = list.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = random.Next(n + 1);
+                T value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+        }
     }
 }
