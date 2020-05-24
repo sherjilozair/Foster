@@ -137,7 +137,7 @@ namespace Foster.Framework
             else
             {
                 var diff = target - from;
-                if (diff.Length() <= amount * amount)
+                if (diff.LengthSquared() <= amount * amount)
                     return target;
                 else
                     return from + diff.Normalized() * amount;
@@ -213,6 +213,11 @@ namespace Foster.Framework
         public static float AngleDiff(float radiansA, float radiansB)
         {
             return ((radiansB - radiansA - PI) % TAU + TAU) % TAU - PI;
+        }
+
+        public static float Snap(float value, float snapTo)
+        {
+            return MathF.Round(value / snapTo) * snapTo;
         }
 
         #endregion
