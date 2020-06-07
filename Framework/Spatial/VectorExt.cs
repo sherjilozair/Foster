@@ -53,6 +53,21 @@ namespace Foster.Framework
         public static Vector4 Ceiling(this Vector4 vector) => new Vector4(MathF.Ceiling(vector.X), MathF.Ceiling(vector.Y), MathF.Ceiling(vector.Z), MathF.Ceiling(vector.W));
 
         /// <summary>
+        /// Truncates the individual components of a Vector2
+        /// </summary>
+        public static Vector2 Truncate(this Vector2 vector) => new Vector2(MathF.Truncate(vector.X), MathF.Truncate(vector.Y));
+
+        /// <summary>
+        /// Truncate the individual components of a Vector3
+        /// </summary>
+        public static Vector3 Truncate(this Vector3 vector) => new Vector3(MathF.Truncate(vector.X), MathF.Truncate(vector.Y), MathF.Truncate(vector.Z));
+
+        /// <summary>
+        /// Truncates the individual components of a Vector4
+        /// </summary>
+        public static Vector4 Truncate(this Vector4 vector) => new Vector4(MathF.Truncate(vector.X), MathF.Truncate(vector.Y), MathF.Truncate(vector.Z), MathF.Truncate(vector.W));
+
+        /// <summary>
         /// Turns a Vector2 to its right perpendicular
         /// </summary>
         public static Vector2 TurnRight(this Vector2 vector) => new Vector2(-vector.Y, vector.X);

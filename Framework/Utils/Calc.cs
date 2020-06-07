@@ -144,6 +144,11 @@ namespace Foster.Framework
             }
         }
 
+        public static Vector2 Lerp(Vector2 a, Vector2 b, float percent)
+        {
+            return (a + (b - a) * percent);
+        }
+
         public static float Lerp(float a, float b, float percent)
         {
             return (a + (b - a) * percent);
