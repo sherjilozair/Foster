@@ -55,6 +55,6 @@ namespace Foster.Framework
 
         public static implicit operator ulong(Mask mask) => mask.Value;
         public static implicit operator Mask(ulong val) => new Mask(val);
-
+        public static implicit operator bool(Mask mask) => mask.Value != None;
     }
 }
