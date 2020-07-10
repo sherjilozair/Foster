@@ -171,6 +171,11 @@ namespace Foster.Framework
             return new RectInt(X - by, Y - by, Width + by * 2, Height + by * 2);
         }
 
+        public RectInt Translated(int x, int y)
+        {
+            return new RectInt(X + x, Y + y, Width, Height);
+        }
+
         public RectInt Scale(float scale)
         {
             return new RectInt((int)(X * scale), (int)(Y * scale), (int)(Width * scale), (int)(Height * scale));
